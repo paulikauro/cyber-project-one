@@ -1,10 +1,5 @@
 package sec.cyberprojectone.db;
 
-import lombok.SneakyThrows;
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.ClassMetadata;
-import org.springframework.core.type.filter.AbstractClassTestingTypeFilter;
 import org.springframework.stereotype.Component;
 import sec.cyberprojectone.Account;
 import sec.cyberprojectone.LoginFailedException;
@@ -13,49 +8,41 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.joining;
 
 @Component
 public class Database {
+    private EntityScanner scanner;
+
     public Database() throws Exception {
         // TODO: do something useful
-        findEntities("sec.cyberprojectone")
-                .forEach(System.out::println);
+        scanner = new EntityScanner("sec.cyberprojectone");
+        scanner.printEntities();
         createTables();
     }
 
-    private List<DbEntity> findEntities(String basePackageName)
-            throws Exception {
-        ClassPathScanningCandidateComponentProvider p
-                = new ClassPathScanningCandidateComponentProvider(false);
-        p.addIncludeFilter(new AbstractClassTestingTypeFilter() {
-            @Override
-            protected boolean match(ClassMetadata metadata) {
-                return Arrays.asList(metadata.getInterfaceNames())
-                        .contains(DbEntity.class.getName());
-            }
-        });
-        return p.findCandidateComponents(basePackageName).stream()
-                .map(BeanDefinition::getBeanClassName)
-                .map(Database::createInstance)
-                .collect(toList());
-    }
-
-    // TODO: replace this with something proper
-    @SneakyThrows
-    private static DbEntity createInstance(String className) {
-        Class<?> c = Class.forName(className);
-        return (DbEntity) c.newInstance();
-    }
-
     private void createTables() throws SQLException {
-        executeStatement(
-                "CREATE TABLE IF NOT EXISTS users (username varchar(255), "
-                        + "password varchar(255));"
-        );
+        createTable(
+                "users",
+                new HashMap<String, String>() {{
+                    put("username", "varchar(255)");
+                    put("password", "varchar(255)");
+                }});
+    }
+
+    private void createTable(String tableName, Map<String, String> fields)
+            throws SQLException {
+        String fieldSql = fields.entrySet().stream()
+                .map(e -> e.getKey() + " " + e.getValue())
+                .collect(joining(", "));
+        String sql = "CREATE TABLE IF NOT EXISTS "
+                + tableName
+                + " (" + fieldSql + ");";
+        executeStatement(sql);
     }
 
     public Connection connect() throws SQLException {
