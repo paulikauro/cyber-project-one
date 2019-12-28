@@ -68,7 +68,7 @@ public class Database {
         return "'" + str + "'";
     }
 
-    public <T> void loadInto(Entity ent, Getter<T> searchBy, T value)
+    public <T> void loadInto(Entity ent, Getter<T> searchBy, Getter<T> actual)
             throws SQLException {
         AtomicBoolean found = new AtomicBoolean(false);
         executeQuery(
@@ -76,7 +76,7 @@ public class Database {
                 rs -> {
                     while (rs.next()) {
                         resultSetToEntity(rs, ent);
-                        if (value.equals(searchBy.get())) {
+                        if (actual.get().equals(searchBy.get())) {
                             found.set(true);
                             return;
                         }

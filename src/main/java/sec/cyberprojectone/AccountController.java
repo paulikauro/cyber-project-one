@@ -34,7 +34,7 @@ public class AccountController {
     public String postLogin(Account account, Model model) throws SQLException {
         Account real = new Account();
         try {
-            db.loadInto(real, real::getUsername, account.getUsername());
+            db.loadInto(real, real::getUsername, account::getUsername);
             if (!real.getPassword().equals(account.getPassword())) {
                 throw new LoginFailedException();
             }
