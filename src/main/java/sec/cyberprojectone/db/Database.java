@@ -1,73 +1,99 @@
 package sec.cyberprojectone.db;
 
 import org.springframework.stereotype.Component;
-import sec.cyberprojectone.Account;
-import sec.cyberprojectone.LoginFailedException;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.stream.Collectors.joining;
+import static sec.cyberprojectone.db.EntityScanner.findEntities;
 
 @Component
 public class Database {
-    private EntityScanner scanner;
+    private List<Entity> entities;
 
     public Database() throws Exception {
         // TODO: do something useful
-        scanner = new EntityScanner("sec.cyberprojectone");
-        scanner.printEntities();
+        entities = findEntities("sec.cyberprojectone");
+        entities.forEach(Entity::pront);
         createTables();
     }
 
     private void createTables() throws SQLException {
-        createTable(
-                "users",
-                new HashMap<String, String>() {{
-                    put("username", "varchar(255)");
-                    put("password", "varchar(255)");
-                }});
+        for (Entity entity : entities) {
+            createTable(entity);
+        }
     }
 
-    private void createTable(String tableName, Map<String, String> fields)
+    private void createTable(Entity ent)
             throws SQLException {
-        String fieldSql = fields.entrySet().stream()
+        String fieldSql = ent.fields().entrySet().stream()
                 .map(e -> e.getKey() + " " + e.getValue())
                 .collect(joining(", "));
-        String sql = "CREATE TABLE IF NOT EXISTS "
-                + tableName
-                + " (" + fieldSql + ");";
-        executeStatement(sql);
+
+        executeStatement(
+                "CREATE TABLE IF NOT EXISTS "
+                + ent.tableName()
+                + " (" + fieldSql + ");"
+        );
     }
 
     public Connection connect() throws SQLException {
         return DriverManager.getConnection("jdbc:h2:file:./database", "sa", "");
     }
 
-    public void persist(Account acc) throws SQLException {
+    public void persist(Entity ent) throws SQLException {
+        ArrayList<String> names = new ArrayList<>();
+        ArrayList<String> values = new ArrayList<>();
+        // TODO: update when persisting other stuff than strings
+        ent.properties
+                .forEach(prop -> {
+                    names.add(prop.getColumnName());
+                    values.add(quote((String) prop.getGetter().get()));
+                });
+        String nameSql = String.join(", ", names);
+        String valueSql = String.join(", ", values);
         executeStatement(
-                "INSERT INTO users (username, password) VALUES "
-                        + "('" + acc.username + "', '" + acc.password + "');"
+                "INSERT INTO " + ent.tableName() + " (" + nameSql + ") VALUES "
+                        + "(" + valueSql + ");"
         );
     }
 
-    public void loadAccount(Account acc)
-            throws SQLException, LoginFailedException {
-        try (Connection conn = connect()) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                    "SELECT password FROM users WHERE username = '" + acc.username + "';"
-            );
-            rs.next();
-            String realPass = rs.getString("password");
-            // TODO: business logic, move elsewhere
-            if (!realPass.equals(acc.password)) {
-                throw new LoginFailedException();
-            }
+    private String quote(String str) {
+        return "'" + str + "'";
+    }
+
+    public <T> void loadInto(Entity ent, Getter<T> searchBy, T value)
+            throws SQLException {
+        AtomicBoolean found = new AtomicBoolean(false);
+        executeQuery(
+                "SELECT * FROM " + ent.tableName() + ";",
+                rs -> {
+                    while (rs.next()) {
+                        resultSetToEntity(rs, ent);
+                        if (value.equals(searchBy.get())) {
+                            found.set(true);
+                            return;
+                        }
+                    }
+                }
+        );
+        // TODO lol
+        if (!found.get()) {
+            throw new SQLException("not found");
+        }
+    }
+
+    private void resultSetToEntity(ResultSet rs, Entity ent)
+            throws SQLException {
+        // TODO: only works with String
+        for (Property prop : ent.properties) {
+            prop.getSetter().set(rs.getString(prop.getColumnName()));
         }
     }
 
@@ -76,6 +102,19 @@ public class Database {
         try (Connection conn = connect()) {
             conn.createStatement().execute(sql);
         }
+    }
+
+    private void executeQuery(String sql, SQLConsumer<ResultSet> handler)
+            throws SQLException {
+        System.out.println("executing " + sql);
+        try (Connection conn = connect()) {
+            handler.accept(conn.createStatement().executeQuery(sql));
+        }
+    }
+
+    @FunctionalInterface
+    interface SQLConsumer<T> {
+        void accept(T t) throws SQLException;
     }
 
 }

@@ -32,8 +32,12 @@ public class AccountController {
 
     @PostMapping("/login")
     public String postLogin(Account account, Model model) throws SQLException {
+        Account real = new Account();
         try {
-            db.loadAccount(account);
+            db.loadInto(real, real::getUsername, account.getUsername());
+            if (!real.getPassword().equals(account.getPassword())) {
+                throw new LoginFailedException();
+            }
         } catch (SQLException | LoginFailedException e) {
             e.printStackTrace();
             return loginFailed(model);

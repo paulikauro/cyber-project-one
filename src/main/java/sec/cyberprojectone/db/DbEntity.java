@@ -1,5 +1,9 @@
 package sec.cyberprojectone.db;
 
-public interface DbEntity {
-    Entity properties();
+import java.lang.annotation.*;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+@interface DbEntity {
 }
