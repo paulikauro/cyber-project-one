@@ -5,6 +5,7 @@
     <title>Notes</title>
 </head>
 <body>
+<a th:href="@{/personal}">Go to your personal page</a>
 <h1 th:text="${account.username} + '\'s notes'">notes</h1>
 <ul>
     <li th:each="note : ${account.notes}" th:utext="${note}" />

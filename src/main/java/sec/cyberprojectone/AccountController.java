@@ -3,7 +3,6 @@ package sec.cyberprojectone;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import sec.cyberprojectone.db.Database;
@@ -40,13 +39,12 @@ public class AccountController {
             Model model,
             HttpServletResponse res
             ) throws SQLException {
-        Account real = new Account();
+        Account real;
         try {
-            boolean loginGood = db.stream(Account.class)
+            real = db.stream(Account.class)
                     .filter(acc -> acc.getUsername().equals(account.getUsername()))
-                    .findFirst().orElseThrow(LoginFailedException::new)
-                    .getPassword().equals(account.getPassword());
-            if (!loginGood) {
+                    .findFirst().orElseThrow(LoginFailedException::new);
+            if (!real.getPassword().equals(account.getPassword())) {
                 throw new LoginFailedException();
             }
         } catch (LoginFailedException e) {
@@ -55,7 +53,7 @@ public class AccountController {
             return loginFailed(model);
         }
         res.addCookie(new Cookie("sess", StringSerializer.serialized(real)));
-        return "redirect:/register";
+        return "redirect:/notes/" + account.getUsername();
     }
 
     private String loginFailed(Model model) {

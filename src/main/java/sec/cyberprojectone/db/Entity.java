@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static sec.cyberprojectone.db.StringSerializer.deserializedList;
+import static sec.cyberprojectone.db.StringSerializer.serializedList;
+
 @DbEntity
 public abstract class Entity {
     final List<Property> properties = new ArrayList<>();
+    int primaryProp;
     // nice
     private static final String chars = "abcdefghijklmnopqrstuvwxyz";
 
@@ -23,14 +27,35 @@ public abstract class Entity {
                 ));
     }
 
-    protected final <T extends String> void property(
+    private int addProperty(Getter g, Setter s, String dt) {
+        int propIndex = properties.size();
+        properties.add(new Property(columnName(propIndex), g, s, dt));
+        return propIndex;
+    }
+
+    protected final <T extends String> int property(
             Getter<T> getter,
             Setter<T> setter
     ) {
-        int propIndex = properties.size();
-        properties.add(new Property(
-                columnName(propIndex), getter, setter, "varchar(255)"
-        ));
+        return addProperty(getter, setter, "varchar(255)");
+    }
+
+    protected final <T extends String> void primaryProperty(
+            Getter<T> getter,
+            Setter<T> setter
+    ) {
+        primaryProp = property(getter, setter);
+    }
+
+    protected final void list(
+            Getter<List<String>> getter,
+            Setter<List<String>> setter
+    ) {
+        Getter<String> serializedGetter =
+                () -> serializedList(getter.get());
+        Setter<String> deserializedSetter =
+                s -> setter.set(deserializedList(s));
+        addProperty(serializedGetter, deserializedSetter, "varchar(1023)");
     }
 
     public void pront() {

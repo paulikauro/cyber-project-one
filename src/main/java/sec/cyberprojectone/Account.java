@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import sec.cyberprojectone.db.Entity;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -13,13 +14,16 @@ import java.util.ArrayList;
 public class Account extends Entity {
     private String username;
     private String password;
-    private ArrayList<String> notes = new ArrayList<>();
-    private ArrayList<String> sharedWith = new ArrayList<>();
-    private ArrayList<String> hasAccessTo = new ArrayList<>();
+    private List<String> notes = new ArrayList<>();
+    private List<String> sharedWith = new ArrayList<>();
+    private List<String> hasAccessTo = new ArrayList<>();
     // TODO
 
     {
-        property(this::getUsername, this::setUsername);
+        primaryProperty(this::getUsername, this::setUsername);
         property(this::getPassword, this::setPassword);
+        list(this::getNotes, this::setNotes);
+        list(this::getSharedWith, this::setSharedWith);
+        list(this::getHasAccessTo, this::setHasAccessTo);
     }
 }

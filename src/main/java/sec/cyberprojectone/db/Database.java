@@ -9,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -50,6 +49,15 @@ public class Database {
         return DriverManager.getConnection("jdbc:h2:file:./database", "sa", "");
     }
 
+    public void delete(Entity ent) throws SQLException {
+        Property primProp = ent.properties.get(ent.primaryProp);
+        executeStatement(
+                "DELETE FROM " + ent.tableName()
+                + " WHERE " + primProp.getColumnName() + " = "
+                        + quote((String) primProp.getGetter().get()) + ";"
+        );
+    }
+
     public void persist(Entity ent) throws SQLException {
         ArrayList<String> names = new ArrayList<>();
         ArrayList<String> values = new ArrayList<>();
@@ -59,6 +67,12 @@ public class Database {
                     names.add(prop.getColumnName());
                     values.add(quote((String) prop.getGetter().get()));
                 });
+        try {
+            delete(ent);
+        } catch (SQLException e) {
+            // ignored -- might exist
+            // this is really hacky
+        }
         String nameSql = String.join(", ", names);
         String valueSql = String.join(", ", values);
         executeStatement(
@@ -99,27 +113,6 @@ public class Database {
                 return t;
             }
         };
-    }
-
-    public <T> void loadInto(Entity ent, Getter<T> searchBy, Getter<T> actual)
-            throws SQLException {
-        AtomicBoolean found = new AtomicBoolean(false);
-        executeQuery(
-                "SELECT * FROM " + ent.tableName() + ";",
-                rs -> {
-                    while (rs.next()) {
-                        resultSetToEntity(rs, ent);
-                        if (actual.get().equals(searchBy.get())) {
-                            found.set(true);
-                            return;
-                        }
-                    }
-                }
-        );
-        // TODO lol
-        if (!found.get()) {
-            throw new SQLException("not found");
-        }
     }
 
     @SneakyThrows

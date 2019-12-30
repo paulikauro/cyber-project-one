@@ -5,22 +5,31 @@
     <title>Settings</title>
 </head>
 <body>
+<h1>Settings</h1>
 <b>These other users have access to your notes:</b>
 <ul>
     <li th:each="user : ${account.sharedWith}" th:text="${user}" />
 </ul>
 
 <h3>Give access to another user</h3>
-<form th:action="@{/note_access" method="POST">
+<form th:action="@{/give_access}" method="POST">
     <label>Username</label>
     <input type="text" name="username" placeholder="Username" />
     <input type="submit" value="Give access" />
 </form>
 
+<h3>You have access to these users' notes</h3>
+<ul>
+    <li th:each="user : ${account.hasAccessTo}">
+        <a th:href="@{/notes/} + ${user}" th:text="${user}"></a>
+    </li>
+</ul>
+
 <h2>Post a note</h2>
-<form th:action="@{/notes}" method="POST">
+<form th:action="@{/post_note}" method="POST">
     <textarea name="note"></textarea>
     <input type="submit" value="Post" />
 </form>
+<a th:href="@{/notes/} + ${account.username}">Go to your notes</a>
 </body>
 </html>
