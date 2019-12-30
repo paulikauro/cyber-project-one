@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.joining;
 import static sec.cyberprojectone.db.EntityScanner.findEntities;
@@ -60,7 +59,12 @@ public class Database {
                     names.add(prop.getColumnName());
                     values.add(quote((String) prop.getGetter().get()));
                 });
-        executeStatement(SQL.insert(ent.tableName(), names, values));
+        String nameSql = String.join(", ", names);
+        String valueSql = String.join(", ", values);
+        executeStatement(
+                "INSERT INTO " + ent.tableName() + " (" + nameSql + ") VALUES "
+                        + "(" + valueSql + ");"
+        );
     }
 
     private String quote(String str) {
