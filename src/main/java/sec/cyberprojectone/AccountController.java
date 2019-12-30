@@ -3,10 +3,14 @@ package sec.cyberprojectone;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import sec.cyberprojectone.db.Database;
+import sec.cyberprojectone.db.StringSerializer;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletResponse;
 import java.sql.SQLException;
 
 @Controller
@@ -31,17 +35,26 @@ public class AccountController {
     }
 
     @PostMapping("/login")
-    public String postLogin(Account account, Model model) throws SQLException {
+    public String postLogin(
+            Account account,
+            Model model,
+            HttpServletResponse res
+            ) throws SQLException {
         Account real = new Account();
         try {
-            db.loadInto(real, real::getUsername, account::getUsername);
-            if (!real.getPassword().equals(account.getPassword())) {
+            boolean loginGood = db.stream(Account.class)
+                    .filter(acc -> acc.getUsername().equals(account.getUsername()))
+                    .findFirst().orElseThrow(LoginFailedException::new)
+                    .getPassword().equals(account.getPassword());
+            if (!loginGood) {
                 throw new LoginFailedException();
             }
-        } catch (SQLException | LoginFailedException e) {
+        } catch (LoginFailedException e) {
+            // for debug
             e.printStackTrace();
             return loginFailed(model);
         }
+        res.addCookie(new Cookie("sess", StringSerializer.serialized(real)));
         return "redirect:/register";
     }
 

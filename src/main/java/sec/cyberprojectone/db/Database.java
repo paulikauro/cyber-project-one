@@ -1,5 +1,6 @@
 package sec.cyberprojectone.db;
 
+import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
@@ -9,6 +10,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.joining;
 import static sec.cyberprojectone.db.EntityScanner.findEntities;
@@ -56,16 +60,41 @@ public class Database {
                     names.add(prop.getColumnName());
                     values.add(quote((String) prop.getGetter().get()));
                 });
-        String nameSql = String.join(", ", names);
-        String valueSql = String.join(", ", values);
-        executeStatement(
-                "INSERT INTO " + ent.tableName() + " (" + nameSql + ") VALUES "
-                        + "(" + valueSql + ");"
-        );
+        executeStatement(SQL.insert(ent.tableName(), names, values));
     }
 
     private String quote(String str) {
         return "'" + str + "'";
+    }
+
+    @SneakyThrows
+    public <T extends Entity> Stream<T> stream(Class<T> ent) {
+        Entity e = ent.newInstance();
+        Connection conn = null;
+        ResultSet rs;
+        try {
+            conn = connect();
+            rs = conn.createStatement().executeQuery("SELECT * FROM " + e.tableName() + ";");
+        } catch (Exception ex) {
+            if (conn != null) {
+                conn.close();
+            }
+            throw ex;
+        }
+        DbStreamer streamer = new DbStreamer(conn, rs);
+        return streamer.stream(streamConverter(ent));
+    }
+
+    private <T extends Entity> Function<ResultSet,T> streamConverter(Class<T> ent) {
+        return new Function<ResultSet, T>() {
+            @Override
+            @SneakyThrows
+            public T apply(ResultSet rs) {
+                T t = ent.newInstance();
+                Database.this.resultSetToEntity(rs, t);
+                return t;
+            }
+        };
     }
 
     public <T> void loadInto(Entity ent, Getter<T> searchBy, Getter<T> actual)
@@ -89,8 +118,8 @@ public class Database {
         }
     }
 
-    private void resultSetToEntity(ResultSet rs, Entity ent)
-            throws SQLException {
+    @SneakyThrows
+    private void resultSetToEntity(ResultSet rs, Entity ent) {
         // TODO: only works with String
         for (Property prop : ent.properties) {
             prop.getSetter().set(rs.getString(prop.getColumnName()));

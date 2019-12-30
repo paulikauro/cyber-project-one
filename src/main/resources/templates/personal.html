@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+</head>
+<body>
+<b>These other users have access to your notes:</b>
+<ul>
+    <li th:each="user : ${account.sharedWith}" th:text="${user}" />
+</ul>
+
+<h3>Give access to another user</h3>
+<form th:action="@{/note_access" method="POST">
+    <label>Username</label>
+    <input type="text" name="username" placeholder="Username" />
+    <input type="submit" value="Give access" />
+</form>
+
+<h2>Post a note</h2>
+<form th:action="@{/notes}" method="POST">
+    <textarea name="note"></textarea>
+    <input type="submit" value="Post" />
+</form>
+</body>
+</html>
