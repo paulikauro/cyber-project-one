@@ -17,6 +17,11 @@ public class AccountController {
     @Autowired
     private Database db;
 
+    @GetMapping("/")
+    public String redirectToLogin() {
+        return "redirect:/login";
+    }
+
     @GetMapping("/register")
     public String getRegister() {
         return "register";
